@@ -2,11 +2,11 @@ pipeline {
     agent any
 
     environment {
-        DB_HOST = '172.31.44.171'       // Your EC2 host IP
+        DB_HOST = '127.0.0.1'                     // database is on same EC2
         DB_PORT = '5432'
         DB_USER = 'odoo_user_new'
         DB_PASS = credentials('db-cred')
-        UPGRADE_PATH = '/opt/migration/openupgrade/scripts'
+        UPGRADE_PATH = '/opt/migration/openupgrade'
         DOCKER_IMAGE = 'odoo-migration:latest'
     }
 
@@ -17,7 +17,9 @@ pipeline {
     stages {
         stage('Checkout Repo') {
             steps {
-                git branch: 'main', url: 'https://github.com/Abhinay3010/odoo-migration.git', credentialsId: 'github-token'
+                git branch: 'main',
+                    url: 'https://github.com/Abhinay3010/odoo-migration.git',
+                    credentialsId: 'github-token'
             }
         }
 
@@ -30,6 +32,8 @@ pipeline {
         stage('Run Migration') {
             steps {
                 sh '''
+                echo "Running migration..."
+
                 docker run --rm --network host \
                     -e DB_NAME=${DB_NAME} \
                     -e DB_HOST=${DB_HOST} \
