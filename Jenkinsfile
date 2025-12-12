@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DB_HOST = '127.0.0.1'                     // database is on same EC2
+        DB_HOST = '127.0.0.1'                     
         DB_PORT = '5432'
         DB_USER = 'odoo_user_new'
         DB_PASS = credentials('db-cred')
@@ -15,6 +15,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout Repo') {
             steps {
                 git branch: 'main',
@@ -50,7 +51,12 @@ pipeline {
     }
 
     post {
-        success { echo 'Migration completed successfully!' }
-        failure { echo 'Migration failed. Check the logs!' }
+        success { 
+            echo 'Migration completed successfully!'
+            echo 'Reports saved under: migration_reports/'
+        }
+        failure { 
+            echo 'Migration failed. Check the logs!'
+        }
     }
 }
