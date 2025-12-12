@@ -13,10 +13,10 @@ PGPASSWORD=$DB_PASS pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -Fc $DB_NAME \
     -f $REPORT_DIR/backup_before_migration.dump
 echo "Backup completed."
 
-echo "Collecting DB analysis (before)..."
+echo "Collecting DB analysis (before migration)..."
 PGPASSWORD=$DB_PASS psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "select * from ir_module_module" \
-    -t -A -F"," > $REPORT_DIR/db_analysis_before.json
+    -c "SELECT name, state FROM ir_module_module ORDER BY name;" \
+    -t -A -F"," > $REPORT_DIR/db_analysis_before.csv
 
 echo "Running OpenUpgrade..."
 python3 /opt/odoo/odoo-bin \
@@ -34,16 +34,16 @@ grep -i "WARNING" $REPORT_DIR/openupgrade.log > $REPORT_DIR/openupgrade_warnings
 echo "Extracting errors..."
 grep -i "ERROR" $REPORT_DIR/openupgrade.log > $REPORT_DIR/openupgrade_errors.log || true
 
-echo "Collecting DB analysis (after)..."
+echo "Collecting DB analysis (after migration)..."
 PGPASSWORD=$DB_PASS psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "select * from ir_module_module" \
-    -t -A -F"," > $REPORT_DIR/db_analysis_after.json
+    -c "SELECT name, state FROM ir_module_module ORDER BY name;" \
+    -t -A -F"," > $REPORT_DIR/db_analysis_after.csv
 
-echo "Generating module changes report..."
-diff -u $REPORT_DIR/db_analysis_before.json $REPORT_DIR/db_analysis_after.json \
+echo "Generating module change report..."
+diff -u $REPORT_DIR/db_analysis_before.csv $REPORT_DIR/db_analysis_after.csv \
     > $REPORT_DIR/module_changes.txt || true
 
 echo "----------------------------------"
-echo "Migration completed."
-echo "All reports saved in migration_reports/"
+echo "Migration completed. Reports saved at:"
+echo "/workspace/migration_reports/"
 echo "----------------------------------"
