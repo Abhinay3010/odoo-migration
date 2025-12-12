@@ -1,20 +1,29 @@
 #!/bin/bash
-set -e
 
 echo "--------------------------"
 echo "Starting migration for DB: $DB_NAME"
 echo "--------------------------"
 
-mkdir -p /opt/migration/backups /opt/migration/logs
+# REQUIRED: pass password to pg_dump and psql
+export PGPASSWORD="$DB_PASS"
 
-# Backup
 echo "Taking backup..."
-pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -F c $DB_NAME > /opt/migration/backups/${DB_NAME}-pre.dump
-echo "Backup completed: /opt/migration/backups/${DB_NAME}-pre.dump"
+pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" "$DB_NAME" > /workspace/${DB_NAME}_backup.sql
 
-# Run migration
-echo "Running migration using Odoo 18 and OpenUpgrade scripts..."
-python3 /opt/odoo/odoo-bin -c /opt/migration/scripts/odoo.conf -d $DB_NAME \
---upgrade-path=$UPGRADE_PATH --update all --stop-after-init --load base,web,openupgrade_framework
+if [ $? -ne 0 ]; then
+    echo "Backup failed!"
+    exit 1
+fi
 
-echo "Migration finished!"
+echo "Backup taken successfully."
+
+echo "Running OpenUpgrade..."
+python3 /opt/odoo/odoo-bin \
+    -c /opt/migration/scripts/odoo.conf \
+    -d "$DB_NAME" \
+    --upgrade-path="$UPGRADE_PATH" \
+    --update all \
+    --stop-after-init \
+    --load=base,web,openupgrade_framework
+
+echo "Migration completed."
