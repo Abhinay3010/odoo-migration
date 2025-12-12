@@ -3,7 +3,8 @@ FROM ubuntu:22.04
 # Install system dependencies and PostgreSQL repo
 RUN apt-get update && apt-get install -y \
     wget curl gnupg \
-    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg \
     && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list' \
     && apt-get update
 
