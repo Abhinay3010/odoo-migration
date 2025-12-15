@@ -28,23 +28,27 @@ RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r /opt/migration/scripts/requirements.txt
 
 # --------------------------
-# Step 3: Copy Odoo & OpenUpgrade
+# Step 3: Download Odoo source inside container
 # --------------------------
-COPY odoo/ /opt/odoo
+RUN git clone --branch 16.0 --depth 1 https://github.com/odoo/odoo.git /opt/odoo
+
+# --------------------------
+# Step 4: Copy OpenUpgrade
+# --------------------------
 COPY openupgrade/ /opt/migration/openupgrade
 
 # --------------------------
-# Step 4: Copy migration scripts
+# Step 5: Copy migration scripts
 # --------------------------
 COPY scripts/ /opt/migration/scripts/
 RUN chmod +x /opt/migration/scripts/*.sh
 
 # --------------------------
-# Step 5: Set PATH for PostgreSQL client
+# Step 6: Set PATH for PostgreSQL client
 # --------------------------
 ENV PATH="/usr/lib/postgresql/*/bin/:$PATH"
 
 # --------------------------
-# Step 6: Default entrypoint
+# Step 7: Default entrypoint
 # --------------------------
 ENTRYPOINT ["/opt/migration/scripts/run_migration.sh"]
