@@ -1,11 +1,12 @@
-# --------------------------
-# Phase 1: Base image
-# --------------------------
+# -------------------------------
+# Odoo 17 Base Dockerfile
+# -------------------------------
+
 FROM python:3.11-slim
 
-# --------------------------
-# System dependencies
-# --------------------------
+# -------------------------------
+# Install system dependencies
+# -------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
@@ -13,27 +14,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     postgresql-client \
-    && apt-get clean \
+    libldap2-dev \
+    libsasl2-dev \
+    libssl-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# --------------------------
-# Working directory
-# --------------------------
+# -------------------------------
+# Set working directory
+# -------------------------------
 WORKDIR /opt
 
-# --------------------------
-# Clone Odoo (TARGET VERSION)
-# Change branch later for migration
-# --------------------------
+# -------------------------------
+# Clone Odoo 17 source code
+# -------------------------------
 RUN git clone --depth 1 --branch 17.0 https://github.com/odoo/odoo.git /opt/odoo
 
-# --------------------------
-# Install Odoo Python deps
-# --------------------------
+# -------------------------------
+# Upgrade pip and install Python requirements
+# -------------------------------
+WORKDIR /opt/odoo
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /opt/odoo/requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
-# --------------------------
-# Keep container alive (DEBUG MODE)
-# --------------------------
-CMD ["sleep", "infinity"]
+# -------------------------------
+# Set default command
+# -------------------------------
+CMD ["python3", "-m", "odoo"]
