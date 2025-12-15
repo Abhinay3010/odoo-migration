@@ -21,23 +21,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # --------------------------
-# Step 2: Copy Odoo 17 & OpenUpgrade
+# Step 2: Copy Python requirements and install
+# --------------------------
+COPY scripts/requirements.txt /opt/migration/scripts/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /opt/migration/scripts/requirements.txt
+
+# --------------------------
+# Step 3: Copy Odoo & OpenUpgrade
 # --------------------------
 COPY odoo/ /opt/odoo
 COPY openupgrade/ /opt/migration/openupgrade
 
 # --------------------------
-# Step 3: Copy migration scripts
+# Step 4: Copy migration scripts
 # --------------------------
 COPY scripts/ /opt/migration/scripts/
+# Make scripts executable (important for GitHub UI upload)
 RUN chmod +x /opt/migration/scripts/*.sh
 
 # --------------------------
-# Step 4: Set PATH for PostgreSQL client
+# Step 5: Set PATH for PostgreSQL client
 # --------------------------
 ENV PATH="/usr/lib/postgresql/*/bin/:$PATH"
 
 # --------------------------
-# Step 5: Keep container alive for inspection
+# Step 6: Default entrypoint
 # --------------------------
-CMD ["bash"]
+ENTRYPOINT ["/opt/migration/scripts/run_migration.sh"]
