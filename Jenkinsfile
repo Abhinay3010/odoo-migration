@@ -5,42 +5,47 @@ pipeline {
         DB_HOST = '127.0.0.1'
         DB_PORT = '5432'
         DB_USER = 'odoo_user_new'
-        DB_PASS = credentials('db-cred') // Jenkins credential ID
+        DB_PASS = credentials('db-cred')       // Jenkins credential ID for DB password
         UPGRADE_PATH = '/opt/migration/openupgrade'
         DOCKER_IMAGE = 'odoo-migration:latest'
-        COMMIT_ID = 'aa737ab'
     }
 
     parameters {
         string(name: 'DB_NAME', defaultValue: 'ngxsu_testing_db_2210_18_demo', description: 'Database name to migrate')
     }
 
+    options {
+        timeout(time: 60, unit: 'MINUTES')     // Prevent pipeline from hanging indefinitely
+        ansiColor('xterm')                     // For colored logs
+        timestamps()                            // Show timestamps in logs
+    }
+
     stages {
+
         stage('Checkout Repo') {
             steps {
+                echo "🔄 Checking out repo..."
                 git branch: 'main',
                     url: 'https://github.com/Abhinay3010/odoo-migration.git',
                     credentialsId: 'github-token'
-                // Checkout specific commit
-                sh "git checkout ${COMMIT_ID}"
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                echo "Building optimized Docker image..."
-                sh """
+                echo "🛠 Building Docker image..."
+                sh '''
                     docker build --pull \
                         -t $DOCKER_IMAGE \
                         -f docker/Dockerfile .
-                """
+                '''
             }
         }
 
         stage('Run Migration') {
             steps {
-                echo "Running Odoo migration in Docker container..."
-                sh """
+                echo "🚀 Running Odoo migration in Docker container..."
+                sh '''
                     docker run --rm --network host \
                         -e DB_NAME=${DB_NAME} \
                         -e DB_HOST=${DB_HOST} \
@@ -51,7 +56,7 @@ pipeline {
                         -v $WORKSPACE:/workspace \
                         -w /workspace \
                         $DOCKER_IMAGE
-                """
+                '''
             }
         }
     }
@@ -62,7 +67,10 @@ pipeline {
             echo 'Reports saved under: migration_reports/'
         }
         failure {
-            echo '❌ Migration failed. Check the logs!'
+            echo '❌ Migration failed. Check logs!'
+        }
+        always {
+            cleanWs()  // Clean workspace after every run to avoid leftover files
         }
     }
 }
