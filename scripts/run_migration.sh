@@ -1,49 +1,38 @@
 #!/bin/bash
 set -e
 
-echo "----------------------------------"
+BACKUP_FILE="/opt/migration/backups/${DB_NAME}-pre.dump"
+
+echo "--------------------------"
 echo "Starting migration for DB: $DB_NAME"
-echo "----------------------------------"
+echo "--------------------------"
 
-REPORT_DIR="/workspace/migration_reports"
-mkdir -p $REPORT_DIR
+mkdir -p /opt/migration/backups /opt/migration/logs
 
+# Backup
 echo "Taking backup..."
-PGPASSWORD=$DB_PASS pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -Fc $DB_NAME \
-    -f $REPORT_DIR/backup_before_migration.dump
-echo "Backup completed."
+pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -F c $DB_NAME > $BACKUP_FILE
+echo "Backup completed: $BACKUP_FILE"
 
-echo "Collecting DB analysis (before migration)..."
-PGPASSWORD=$DB_PASS psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "SELECT name, state FROM ir_module_module ORDER BY name;" \
-    -t -A -F"," > $REPORT_DIR/db_analysis_before.csv
-
-echo "Running OpenUpgrade..."
-python3 /opt/odoo/odoo-bin \
-    -c /workspace/odoo.conf \
+# Migration
+echo "Running migration..."
+if python3 /opt/odoo/odoo-bin \
+    -c /opt/migration/scripts/odoo.conf \
     -d $DB_NAME \
     --upgrade-path=$UPGRADE_PATH \
     --update all \
     --stop-after-init \
-    --load=base,web,openupgrade_framework \
-    2>&1 | tee $REPORT_DIR/openupgrade.log
+    --load base,web,openupgrade_framework
+then
+    echo "Migration SUCCESS ✅"
+else
+    echo "Migration FAILED ❌ — restoring backup"
 
-echo "Extracting warnings..."
-grep -i "WARNING" $REPORT_DIR/openupgrade.log > $REPORT_DIR/openupgrade_warnings.log || true
+    dropdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
+    createdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
 
-echo "Extracting errors..."
-grep -i "ERROR" $REPORT_DIR/openupgrade.log > $REPORT_DIR/openupgrade_errors.log || true
+    pg_restore -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME $BACKUP_FILE
 
-echo "Collecting DB analysis (after migration)..."
-PGPASSWORD=$DB_PASS psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME \
-    -c "SELECT name, state FROM ir_module_module ORDER BY name;" \
-    -t -A -F"," > $REPORT_DIR/db_analysis_after.csv
-
-echo "Generating module change report..."
-diff -u $REPORT_DIR/db_analysis_before.csv $REPORT_DIR/db_analysis_after.csv \
-    > $REPORT_DIR/module_changes.txt || true
-
-echo "----------------------------------"
-echo "Migration completed. Reports saved at:"
-echo "/workspace/migration_reports/"
-echo "----------------------------------"
+    echo "Rollback completed 🔄"
+    exit 1
+fi
