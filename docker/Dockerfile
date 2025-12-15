@@ -1,51 +1,54 @@
 # --------------------------
-# Base image: lightweight Python 3.11
+# Base image
 # --------------------------
 FROM python:3.11-slim
 
 # --------------------------
-# Set working directory
+# Set environment
 # --------------------------
-WORKDIR /opt/migration
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /opt
 
 # --------------------------
-# Step 1: Install system dependencies
+# Install system dependencies
 # --------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
         wget \
         curl \
-        git \
         build-essential \
         libpq-dev \
         postgresql-client \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+        nodejs \
+        npm \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # --------------------------
-# Step 2: Copy Python requirements and install
+# Clone Odoo 17 source
 # --------------------------
-COPY scripts/requirements.txt /opt/migration/scripts/requirements.txt
+RUN git clone --depth 1 --branch 17.0 https://github.com/odoo/odoo.git /opt/odoo
+
+# --------------------------
+# Install Python dependencies
+# --------------------------
+WORKDIR /opt/odoo
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r /opt/migration/scripts/requirements.txt
+    && pip install --no-cache-dir -r requirements.txt
 
 # --------------------------
-# Step 3: Copy Odoo & OpenUpgrade
+# Copy OpenUpgrade
 # --------------------------
-COPY odoo/ /opt/odoo
+WORKDIR /opt/migration
 COPY openupgrade/ /opt/migration/openupgrade
 
 # --------------------------
-# Step 4: Copy migration scripts
+# Copy migration scripts
 # --------------------------
 COPY scripts/ /opt/migration/scripts/
-# Make scripts executable (important for GitHub UI upload)
 RUN chmod +x /opt/migration/scripts/*.sh
 
 # --------------------------
-# Step 5: Set PATH for PostgreSQL client
+# Default command (keep container running)
 # --------------------------
-ENV PATH="/usr/lib/postgresql/*/bin/:$PATH"
-
-# --------------------------
-# Step 6: Default entrypoint
-# --------------------------
-ENTRYPOINT ["/opt/migration/scripts/run_migration.sh"]
+CMD ["tail", "-f", "/dev/null"]
