@@ -5,7 +5,7 @@ pipeline {
         DB_HOST = '127.0.0.1'
         DB_PORT = '5432'
         DB_USER = 'odoo_user_new'
-        DB_PASS = credentials('db-cred')
+        DB_PASS = credentials('db-cred')       // Your Jenkins credential ID
         UPGRADE_PATH = '/opt/migration/openupgrade'
         DOCKER_IMAGE = 'odoo-migration:latest'
     }
@@ -24,48 +24,43 @@ pipeline {
             }
         }
 
-        // ✅ Optional: Only build Docker if not already present
-        stage('Build Docker Image (Optional)') {
+        stage('Build Docker Image') {
             steps {
-                script {
-                    def imageExists = sh(script: "docker images -q $DOCKER_IMAGE", returnStdout: true).trim()
-                    if (!imageExists) {
-                        echo "Docker image not found. Building..."
-                        sh 'docker build -t $DOCKER_IMAGE -f docker/Dockerfile .'
-                    } else {
-                        echo "Docker image already exists. Skipping build."
-                    }
-                }
+                echo "Building optimized Docker image..."
+                sh '''
+                    docker build --pull \
+                        -t $DOCKER_IMAGE \
+                        -f docker/Dockerfile .
+                '''
             }
         }
 
         stage('Run Migration') {
             steps {
+                echo "Running Odoo migration in Docker container..."
                 sh '''
-                echo "Running migration..."
-
-                docker run --rm --network host \
-                    -e DB_NAME=${DB_NAME} \
-                    -e DB_HOST=${DB_HOST} \
-                    -e DB_PORT=${DB_PORT} \
-                    -e DB_USER=${DB_USER} \
-                    -e DB_PASS=${DB_PASS} \
-                    -e UPGRADE_PATH=${UPGRADE_PATH} \
-                    -v $WORKSPACE:/workspace \
-                    -w /workspace \
-                    $DOCKER_IMAGE
+                    docker run --rm --network host \
+                        -e DB_NAME=${DB_NAME} \
+                        -e DB_HOST=${DB_HOST} \
+                        -e DB_PORT=${DB_PORT} \
+                        -e DB_USER=${DB_USER} \
+                        -e DB_PASS=${DB_PASS} \
+                        -e UPGRADE_PATH=${UPGRADE_PATH} \
+                        -v $WORKSPACE:/workspace \
+                        -w /workspace \
+                        $DOCKER_IMAGE
                 '''
             }
         }
     }
 
     post {
-        success { 
-            echo 'Migration completed successfully!'
+        success {
+            echo '✅ Migration completed successfully!'
             echo 'Reports saved under: migration_reports/'
         }
-        failure { 
-            echo 'Migration failed. Check the logs!'
+        failure {
+            echo '❌ Migration failed. Check the logs!'
         }
     }
 }
