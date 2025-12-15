@@ -9,6 +9,9 @@ echo "--------------------------"
 
 mkdir -p /opt/migration/backups /opt/migration/logs
 
+# Set PostgreSQL password for non-interactive commands
+export PGPASSWORD=$DB_PASS
+
 # Backup
 echo "Taking backup..."
 pg_dump -h $DB_HOST -p $DB_PORT -U $DB_USER -F c $DB_NAME > $BACKUP_FILE
@@ -28,9 +31,11 @@ then
 else
     echo "Migration FAILED ❌ — restoring backup"
 
+    # Drop and recreate DB for rollback
     dropdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
     createdb -h $DB_HOST -p $DB_PORT -U $DB_USER $DB_NAME
 
+    # Restore from backup
     pg_restore -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME $BACKUP_FILE
 
     echo "Rollback completed 🔄"
