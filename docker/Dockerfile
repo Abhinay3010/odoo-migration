@@ -1,14 +1,23 @@
+# --------------------------
 # Base image: lightweight Python 3.11
+# --------------------------
 FROM python:3.11-slim
 
+# --------------------------
 # Set working directory
+# --------------------------
 WORKDIR /opt/migration
 
 # --------------------------
 # Step 1: Install system dependencies
 # --------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        wget curl git build-essential libpq-dev postgresql-client \
+        wget \
+        curl \
+        git \
+        build-essential \
+        libpq-dev \
+        postgresql-client \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # --------------------------
