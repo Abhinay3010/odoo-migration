@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DB_HOST = '127.0.0.1'                     
+        DB_HOST = '127.0.0.1'
         DB_PORT = '5432'
         DB_USER = 'odoo_user_new'
         DB_PASS = credentials('db-cred')
@@ -24,9 +24,18 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        // ✅ Optional: Only build Docker if not already present
+        stage('Build Docker Image (Optional)') {
             steps {
-                sh 'docker build -t $DOCKER_IMAGE -f docker/Dockerfile .'
+                script {
+                    def imageExists = sh(script: "docker images -q $DOCKER_IMAGE", returnStdout: true).trim()
+                    if (!imageExists) {
+                        echo "Docker image not found. Building..."
+                        sh 'docker build -t $DOCKER_IMAGE -f docker/Dockerfile .'
+                    } else {
+                        echo "Docker image already exists. Skipping build."
+                    }
+                }
             }
         }
 
