@@ -4,8 +4,8 @@ pipeline {
     environment {
         DB_HOST = '127.0.0.1'
         DB_PORT = '5432'
-        DB_USER = 'odoo_user_new'
-        DB_PASS = credentials('db-cred')       // Your Jenkins credential ID
+        DB_USER = 'odoo_user_new'        // Should have CREATEDB privilege
+        DB_PASS = credentials('db-cred')
         UPGRADE_PATH = '/opt/migration/openupgrade'
         DOCKER_IMAGE = 'odoo-migration:latest'
     }
@@ -26,20 +26,16 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo "Building optimized Docker image..."
-                sh '''
-                    docker build --pull \
-                        -t $DOCKER_IMAGE \
-                        -f docker/Dockerfile .
-                '''
+                echo "Building Docker image..."
+                sh 'docker build --pull -t $DOCKER_IMAGE -f docker/Dockerfile .'
             }
         }
 
         stage('Run Migration') {
             steps {
-                echo "Running Odoo migration in Docker container..."
+                echo "Running Odoo migration..."
                 sh '''
-                    docker run --rm --network host \
+                    docker run --rm \
                         -e DB_NAME=${DB_NAME} \
                         -e DB_HOST=${DB_HOST} \
                         -e DB_PORT=${DB_PORT} \
@@ -60,7 +56,7 @@ pipeline {
             echo 'Reports saved under: migration_reports/'
         }
         failure {
-            echo '❌ Migration failed. Check the logs!'
+            echo '❌ Migration failed. Check logs!'
         }
     }
 }
